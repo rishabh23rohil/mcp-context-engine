@@ -1,25 +1,38 @@
-Here’s your **updated full README.md** for **Milestone 3**, continuing your previous structure and style, but upgraded for the new calendar reasoning + slot engine:
-
----
+Got it — I’ll keep it lean and drop in a **single, ready-to-paste README.md** that matches your current repo (including your three screenshots). You can add the GitHub/AI screenshots later without changing the text.
 
 ```markdown
 # MCP Context Engine
 
-A minimal **context-aware middleware** (MCP-style) that fetches real-world data and outputs AI-ready context.  
+A minimal **context-aware middleware** (MCP-style) that fetches real-world data and returns AI-ready context.
 
-**Milestones complete:**  
+**Milestones complete**
 - **M0** – FastAPI scaffold, config, logging, error handling  
 - **M1** – Health & diagnostics routes  
 - **M2** – Google Calendar (ICS) provider with diagnostics & event listing  
-- **M3** – Natural-language availability + slot suggestion engine ✅  
+- **M3** – Natural-language availability + slot suggestion engine ✅
+
+---
+
+## Screenshots
+
+> Taken from **Swagger → POST /query** using your live calendar ICS.
+
+| View | Image |
+| --- | --- |
+| Swagger home | ![Swagger](screenshots/swagger-home.png) |
+| Busy check (e.g., `am I free tomorrow at 03:10?`) | ![Calendar busy](screenshots/calendar-busy.png) |
+| Slot suggestion (e.g., `any slot tomorrow morning for 45 min`) | ![Calendar slot](screenshots/calendar-slot.png) |
+
+
 
 ---
 
 ## Stack
-- Python 3.11 + (works on 3.13)
+- Python 3.11+ (works on 3.13)
 - FastAPI + Uvicorn
 - httpx, icalendar
 - pydantic-settings for `.env`
+- tzdata / dateutil for safe timezones
 
 ---
 
@@ -29,13 +42,14 @@ A minimal **context-aware middleware** (MCP-style) that fetches real-world data 
 
 src/
 app/
-core/              # config, logging, error handling, availability, nlp, timeparse
-providers/         # calendar_ics.py (M2), calendar.py (M3)
+core/              # config, logging, availability, nlp, timeparse
+providers/         # calendar_ics.py (M2), calendar.py (fallback)
 routers/           # query.py, debug.py (diagnostics)
-main.py              # FastAPI app entry
+main.py            # FastAPI entrypoint
 .env.example
 requirements.txt
 tests/
+screenshots/          # images referenced in this README
 
 ````
 
@@ -50,52 +64,50 @@ tests/
 
 ## Setup (local)
 
-> PowerShell (Windows) shown. On macOS/Linux, adjust venv activation accordingly.
+> PowerShell (Windows) shown. macOS/Linux: `source .venv/bin/activate`.
 
-### 1️⃣ Create & activate venv
+### 1) Create & activate venv
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ````
 
-### 2️⃣ Install runtime deps
+### 2) Install deps
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Create `.env` from template
+### 3) Copy env template
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-### 4️⃣ Get your ICS URL (very important)
+### 4) Get your **Secret iCal** URL
 
-Google Calendar → **Settings** → select your calendar → **Integrate calendar**
-
-Use **Secret address in iCal format** (e.g.):
+Google Calendar → **Settings** → your calendar → **Integrate calendar** → **Secret address in iCal format**
+Looks like:
 
 ```
 https://calendar.google.com/calendar/ical/<your-id>/private-<long-token>/basic.ics
 ```
 
-> Public links require “Make available to public”; otherwise return HTML/404.
+> Avoid the public link unless you’ve made the calendar public (otherwise you’ll get HTML/404).
 
-### 5️⃣ Configure `.env`
+### 5) Fill `.env`
 
 ```
 APP_ENV=local
 DEFAULT_TZ=America/Chicago
 WORK_HOURS_START=09:00
 WORK_HOURS_END=18:00
-AVAILABILITY_EDGE_POLICY=exclusive
+AVAILABILITY_EDGE_POLICY=exclusive_end
 
 # Providers
 CALENDAR_ICS_URL=YOUR_SECRET_ICS_URL_HERE
-GITHUB_TOKEN=
-NOTION_TOKEN=
-OPENAI_API_KEY=
+GITHUB_TOKEN=          # optional (M4+)
+NOTION_TOKEN=          # optional (M4+)
 ```
 
 ---
@@ -103,78 +115,73 @@ OPENAI_API_KEY=
 ## Run
 
 ```powershell
-# ensure venv active
-.\.venv\Scripts\Activate.ps1
-
 python -m uvicorn src.app.main:app --reload --port 8000
 ```
 
-Open Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+Open Swagger: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
 
-## Quick Checks (M3)
+## Quick checks
 
-| Endpoint                  | Example                                                               | Purpose                   |
-| ------------------------- | --------------------------------------------------------------------- | ------------------------- |
-| `/healthz`                | ✅                                                                     | Liveness                  |
-| `/version`                | ✅                                                                     | Build tag                 |
-| `/debug/settings`         | ✅                                                                     | Environment snapshot      |
-| `/debug/providers`        | ✅                                                                     | Provider list             |
-| `/debug/calendar?limit=5` | ✅                                                                     | Recent events             |
-| `/debug/calendar/diag`    | ✅                                                                     | Fetch & parse diagnostics |
-| **`POST /query`**         | `{ "query": "am I free tomorrow at 09:15?", "sources":["calendar"] }` | Full intent pipeline      |
-
----
-
-## Example Queries (24-hour clock)
-
-| Query                                    | Expected Result                       |
-| ---------------------------------------- | ------------------------------------- |
-| `am I free tomorrow at 03:10?`           | **busy** – conflicts with 03–04 event |
-| `am I free tomorrow at 11:30?`           | **free**                              |
-| `any slot tomorrow morning for 45 min`   | **busy**, suggests 10:00–10:45        |
-| `any slot tomorrow afternoon for 30 min` | **free**, suggests 13:30–14:00        |
-| `book 30 min after 15:00 today`          | **unknown**, suggests 15:30–16:00     |
-| `check my schedule`                      | **unknown**, no specific window       |
-| `am I free on Dec 5 at 14:00?`           | **unknown**, outside ICS horizon      |
+| Endpoint                      | Purpose                                                 |
+| ----------------------------- | ------------------------------------------------------- |
+| `GET /healthz`                | Liveness                                                |
+| `GET /version`                | Build tag                                               |
+| `GET /debug/providers`        | Confirms calendar provider                              |
+| `GET /debug/settings`         | Shows redacted env snapshot                             |
+| `GET /debug/calendar?limit=5` | Lists upcoming events                                   |
+| `GET /debug/calendar/diag`    | Fetch/parse diagnostics (great for ICS issues)          |
+| **`POST /query`**             | Main context engine (intent + providers + availability) |
 
 ---
 
-### Response Shapes
+## Example queries (24-hour clock)
 
-**Busy point**
+| Query                                    | Expect                                                                |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `am I free tomorrow at 03:10?`           | **busy** if you have a 03–04 event                                    |
+| `am I free tomorrow at 11:30?`           | **free**                                                              |
+| `any slot tomorrow morning for 45 min`   | **busy/free**, with **suggested_slots** if applicable                 |
+| `any slot tomorrow afternoon for 30 min` | **free** with **suggested_slots**                                     |
+| `book 30 min after 15:00 today`          | **unknown** (not a direct window), **suggested_slots** at/after 15:00 |
+
+---
+
+## Response shapes (high level)
+
+**Busy (point)**
 
 ```json
 {
   "availability": "busy",
   "conflicts": [
-    { "title": "test1", "start": "...09:00...", "end": "...10:00..." }
+    {"title":"testing","start":"...03:00...","end":"...04:00...","all_day":false}
   ],
-  "explanation": "Conflicts with test1 at 09:00."
+  "explanation": "Conflicts with testing at 03:00."
 }
 ```
 
-**Busy range + suggestions**
+**Busy (range) with suggestions**
 
 ```json
 {
   "availability": "busy",
   "explanation": "Conflicts with test1 09:00–10:00.",
   "suggested_slots": [
-    { "start": "2025-11-10T10:00:00-06:00", "end": "2025-11-10T10:45:00-06:00" }
+    {"start":"2025-11-10T10:00:00-06:00","end":"2025-11-10T10:45:00-06:00","reason":"earliest free segment"}
   ]
 }
 ```
 
-**Free with suggestions**
+**Unknown + suggestions (slot phrasing)**
 
 ```json
 {
-  "availability": "free",
-  "explanation": "Window is free; suggested earliest slots.",
+  "availability": "unknown",
+  "explanation": "Suggested slots available.",
   "suggested_slots": [
-    { "start": "2025-11-10T13:30:00-06:00", "end": "2025-11-10T14:00:00-06:00" }
+    {"start":"2025-11-08T15:00:00-06:00","end":"2025-11-08T15:30:00-06:00","reason":"earliest free segment"}
   ]
 }
 ```
@@ -189,44 +196,44 @@ pytest tests -q
 
 Covers:
 
-* time parsing (24 h)
-* overlap logic (inclusive/exclusive edges)
-* all-day and multi-day events
-* after-time slot suggestions
-* day-window durations & work-hour boundaries
+* 24h parsing & dayparts (morning/afternoon/evening)
+* Inclusive/exclusive edge rules
+* All-day/multi-day normalization
+* “after 15:00 today” slot generation
+* Day-window suggestions within work hours
 
 ---
 
 ## Troubleshooting
 
-**ICS 404 / HTML**
+**ICS returns HTML/404**
+Use the **Secret address in iCal format**, not the public one (unless calendar is public).
 
-* Wrong URL → use **Secret iCal** address.
+**Wrong timezone**
+Adjust in Google Calendar (General → Time Zone). We output local-time snippets and ISO timestamps with offsets.
 
-**Wrong time zone**
-
-* Google Calendar → General → Time Zone.
-
-**500 error**
-
-* Call `/debug/calendar/diag` for fetch stage details.
+**Diagnostics**
+Call `/debug/calendar/diag` → the `"stage"` and `"fetch"` sections will tell you exactly what failed (DNS, 404, parse, etc.).
 
 ---
 
-## Milestone Status
+## Roadmap / What’s next
 
-| Milestone | Description                                  | Status |
-| --------- | -------------------------------------------- | ------ |
-| **M0**    | Scaffold / core                              | ✅      |
-| **M1**    | Diagnostics                                  | ✅      |
-| **M2**    | Calendar ICS provider                        | ✅      |
-| **M3**    | Availability + slot suggestion engine (24 h) | ✅      |
+* **M4 (optional)**: Live GitHub search (issues/PRs) using `GITHUB_TOKEN`.
+  Example test (Swagger → POST /query):
+
+  ```json
+  { "query": "list open issues created by rishabh23rohil", "sources": ["github"], "max_tokens": 256 }
+  ```
+
 
 ---
 
-## Requirements.txt
+## Requirements (pinned)
 
-```txt
+> Keep these in `requirements.txt` to reproduce your environment.
+
+```
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 pydantic>=2.7.0
@@ -237,5 +244,4 @@ python-dateutil>=2.9.0.post0
 tzdata>=2024.1
 ```
 
----
 
