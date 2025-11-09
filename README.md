@@ -257,5 +257,29 @@ tzdata>=2024.1
 
 
 
+## Screenshots
+
+> Taken from **Swagger → POST /query** using your live calendar ICS.
+
+### 🧭 Swagger Home
+Displays the interactive API interface for querying your calendar context.
+
+![Swagger Home](https://github.com/rishabh23rohil/mcp-context-engine/blob/main/screenshots/swagger-home.png?raw=true)
+
+---
+
+### 📅 Busy Check
+Example query: `am I free tomorrow at 03:10?`  
+Shows the model determining whether the user is busy at a given time.
+
+![Calendar Busy](https://github.com/rishabh23rohil/mcp-context-engine/blob/main/screenshots/calendar-busy.png?raw=true)
+
+---
+
+### ⏰ Slot Suggestion
+Example query: `any slot tomorrow morning for 45 min`  
+Shows the system suggesting the next available free slot.
+
+![Calendar Slot](https://github.com/rishabh23rohil/mcp-context-engine/blob/main/screenshots/calendar-slot.png?raw=true)
 
 
