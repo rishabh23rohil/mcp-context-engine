@@ -1,6 +1,6 @@
 ﻿Got you. Here’s everything for **Milestone 2**—clean and copy-paste ready.
 
-# 1) `README.md` (paste this whole file)
+# 1) `README.md`
 
 ```md
 # MCP Context Engine
