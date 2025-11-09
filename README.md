@@ -19,9 +19,9 @@ A minimal **context-aware middleware** (MCP-style) that fetches real-world data 
 
 | View | Image |
 | --- | --- |
-| Swagger home | ![Swagger](screenshots/swagger-home.png) |
-| Busy check (e.g., `am I free tomorrow at 03:10?`) | ![Calendar busy](screenshots/calendar-busy.png) |
-| Slot suggestion (e.g., `any slot tomorrow morning for 45 min`) | ![Calendar slot](screenshots/calendar-slot.png) |
+| Swagger home | ![Swagger](./screenshots/swagger-home.png) |
+| Busy check (e.g., `am I free tomorrow at 03:10?`) | ![Calendar busy](./screenshots/calendar-busy.png) |
+| Slot suggestion (e.g., `any slot tomorrow morning for 45 min`) | ![Calendar slot](./screenshots/calendar-slot.png) |
 
 
 
