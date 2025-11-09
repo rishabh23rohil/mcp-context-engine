@@ -1,19 +1,22 @@
+Here’s your **updated full README.md** for **Milestone 3**, continuing your previous structure and style, but upgraded for the new calendar reasoning + slot engine:
 
-# 1) `README.md`
+---
 
-```md
+```markdown
 # MCP Context Engine
 
 A minimal **context-aware middleware** (MCP-style) that fetches real-world data and outputs AI-ready context.  
+
 **Milestones complete:**  
 - **M0** – FastAPI scaffold, config, logging, error handling  
 - **M1** – Health & diagnostics routes  
-- **M2** – Google Calendar (ICS) provider with diagnostics & event listing
+- **M2** – Google Calendar (ICS) provider with diagnostics & event listing  
+- **M3** – Natural-language availability + slot suggestion engine ✅  
 
 ---
 
 ## Stack
-- Python 3.11+ (works on 3.13)
+- Python 3.11 + (works on 3.13)
 - FastAPI + Uvicorn
 - httpx, icalendar
 - pydantic-settings for `.env`
@@ -21,16 +24,18 @@ A minimal **context-aware middleware** (MCP-style) that fetches real-world data 
 ---
 
 ## Repo layout (key)
+
 ```
 
 src/
 app/
-core/              # config, logging, error handling
-providers/         # calendar_ics.py (M2)
+core/              # config, logging, error handling, availability, nlp, timeparse
+providers/         # calendar_ics.py (M2), calendar.py (M3)
 routers/           # query.py, debug.py (diagnostics)
-main.py            # FastAPI app (mounts routers)
+main.py              # FastAPI app entry
 .env.example
 requirements.txt
+tests/
 
 ````
 
@@ -39,7 +44,7 @@ requirements.txt
 ## Prerequisites
 - Python **3.11+**
 - Git
-- A Google Calendar you can access
+- A Google Calendar you can access (ICS URL)
 
 ---
 
@@ -47,38 +52,46 @@ requirements.txt
 
 > PowerShell (Windows) shown. On macOS/Linux, adjust venv activation accordingly.
 
-1) **Create & activate venv**
+### 1️⃣ Create & activate venv
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ````
 
-2. **Install runtime deps**
+### 2️⃣ Install runtime deps
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-3. **Create `.env` from template**
+### 3️⃣ Create `.env` from template
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-4. **Get your ICS URL (very important)**
-   Google Calendar → **Settings** → pick your calendar under **My calendars** → **Integrate calendar**:
+### 4️⃣ Get your ICS URL (very important)
 
-* Prefer **Secret address in iCal format** (works without making calendar public).
-  Looks like:
-  `https://calendar.google.com/calendar/ical/<your-id>/private-<long-token>/basic.ics`
+Google Calendar → **Settings** → select your calendar → **Integrate calendar**
 
-> If you use *Public address in iCal format*, you must first enable
-> **Access permissions → Make available to public**. Otherwise the URL returns HTML/404 (not ICS).
+Use **Secret address in iCal format** (e.g.):
 
-5. **Configure `.env`**
+```
+https://calendar.google.com/calendar/ical/<your-id>/private-<long-token>/basic.ics
+```
+
+> Public links require “Make available to public”; otherwise return HTML/404.
+
+### 5️⃣ Configure `.env`
 
 ```
 APP_ENV=local
+DEFAULT_TZ=America/Chicago
+WORK_HOURS_START=09:00
+WORK_HOURS_END=18:00
+AVAILABILITY_EDGE_POLICY=exclusive
+
+# Providers
 CALENDAR_ICS_URL=YOUR_SECRET_ICS_URL_HERE
 GITHUB_TOKEN=
 NOTION_TOKEN=
@@ -90,123 +103,139 @@ OPENAI_API_KEY=
 ## Run
 
 ```powershell
-# ensure venv is active
+# ensure venv active
 .\.venv\Scripts\Activate.ps1
 
 python -m uvicorn src.app.main:app --reload --port 8000
 ```
 
-Server: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+Open Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
 
-## Quick checks (Milestone 2)
+## Quick Checks (M3)
 
-Open in a browser or curl:
+| Endpoint                  | Example                                                               | Purpose                   |
+| ------------------------- | --------------------------------------------------------------------- | ------------------------- |
+| `/healthz`                | ✅                                                                     | Liveness                  |
+| `/version`                | ✅                                                                     | Build tag                 |
+| `/debug/settings`         | ✅                                                                     | Environment snapshot      |
+| `/debug/providers`        | ✅                                                                     | Provider list             |
+| `/debug/calendar?limit=5` | ✅                                                                     | Recent events             |
+| `/debug/calendar/diag`    | ✅                                                                     | Fetch & parse diagnostics |
+| **`POST /query`**         | `{ "query": "am I free tomorrow at 09:15?", "sources":["calendar"] }` | Full intent pipeline      |
 
-* Health:
-  `GET http://127.0.0.1:8000/healthz`
-  → `{"ok": true}`
+---
 
-* Version:
-  `GET http://127.0.0.1:8000/version`
+## Example Queries (24-hour clock)
 
-* Provider selection:
-  `GET http://127.0.0.1:8000/debug/providers`
-  → `{"calendar":"CalendarICSProvider"}`
+| Query                                    | Expected Result                       |
+| ---------------------------------------- | ------------------------------------- |
+| `am I free tomorrow at 03:10?`           | **busy** – conflicts with 03–04 event |
+| `am I free tomorrow at 11:30?`           | **free**                              |
+| `any slot tomorrow morning for 45 min`   | **busy**, suggests 10:00–10:45        |
+| `any slot tomorrow afternoon for 30 min` | **free**, suggests 13:30–14:00        |
+| `book 30 min after 15:00 today`          | **unknown**, suggests 15:30–16:00     |
+| `check my schedule`                      | **unknown**, no specific window       |
+| `am I free on Dec 5 at 14:00?`           | **unknown**, outside ICS horizon      |
 
-* Settings (redacted):
-  `GET http://127.0.0.1:8000/debug/settings`
-  → confirms `CALENDAR_ICS_URL_set: true`
+---
 
-* ICS diagnostics:
-  `GET http://127.0.0.1:8000/debug/calendar/diag`
+### Response Shapes
 
-  * ✅ Expect: `{"ok": true, "stage": "parse", "events_found": N, "fetch": {...}}`
-  * ❌ If you see `status: 404` or `content-type: text/html`, you copied the wrong link. Use **Secret iCal**.
+**Busy point**
 
-* List upcoming events (limit=10):
-  `GET http://127.0.0.1:8000/debug/calendar?limit=10`
-  Sample:
+```json
+{
+  "availability": "busy",
+  "conflicts": [
+    { "title": "test1", "start": "...09:00...", "end": "...10:00..." }
+  ],
+  "explanation": "Conflicts with test1 at 09:00."
+}
+```
 
-  ```json
-  {
-    "provider":"CalendarICSProvider",
-    "count":2,
-    "items":[
-      {
-        "source":"calendar",
-        "title":"m2 test",
-        "snippet":"2025-11-10 03:00 - 04:00 (local time)",
-        "url":null,
-        "metadata":{
-          "start":"2025-11-10T03:00:00-06:00",
-          "end":"2025-11-10T04:00:00-06:00"
-        }
-      }
-    ]
-  }
-  ```
+**Busy range + suggestions**
+
+```json
+{
+  "availability": "busy",
+  "explanation": "Conflicts with test1 09:00–10:00.",
+  "suggested_slots": [
+    { "start": "2025-11-10T10:00:00-06:00", "end": "2025-11-10T10:45:00-06:00" }
+  ]
+}
+```
+
+**Free with suggestions**
+
+```json
+{
+  "availability": "free",
+  "explanation": "Window is free; suggested earliest slots.",
+  "suggested_slots": [
+    { "start": "2025-11-10T13:30:00-06:00", "end": "2025-11-10T14:00:00-06:00" }
+  ]
+}
+```
+
+---
+
+## Testing
+
+```bash
+pytest tests -q
+```
+
+Covers:
+
+* time parsing (24 h)
+* overlap logic (inclusive/exclusive edges)
+* all-day and multi-day events
+* after-time slot suggestions
+* day-window durations & work-hour boundaries
 
 ---
 
 ## Troubleshooting
 
-**ICS 404 or HTML page**
+**ICS 404 / HTML**
 
-* You copied the wrong URL. Use **Secret address in iCal format**.
-* Put it in `.env` → `CALENDAR_ICS_URL=...` and save. Server will auto-reload.
+* Wrong URL → use **Secret iCal** address.
 
-**Time zone looks off**
+**Wrong time zone**
 
-* Google Calendar → **General → Time Zone**.
-* We output local-time snippets; `metadata.start/end` are ISO with offsets.
+* Google Calendar → General → Time Zone.
 
-**Generic 500**
+**500 error**
 
-* Check `/debug/calendar/diag` → see `"stage"` and `"fetch"` sections for the exact failure.
+* Call `/debug/calendar/diag` for fetch stage details.
 
 ---
 
-## Milestone status
+## Milestone Status
 
-* **M0**: Scaffold / core ✅
-* **M1**: Diagnostics ✅
-* **M2**: Calendar ICS provider + routes ✅
-
-Next (not in this commit): **M3** (Notion/GitHub providers + merged `/query`).
-
----
-
-````
+| Milestone | Description                                  | Status |
+| --------- | -------------------------------------------- | ------ |
+| **M0**    | Scaffold / core                              | ✅      |
+| **M1**    | Diagnostics                                  | ✅      |
+| **M2**    | Calendar ICS provider                        | ✅      |
+| **M3**    | Availability + slot suggestion engine (24 h) | ✅      |
 
 ---
 
-# 2) `requirements.txt` (paste exactly)
+## Requirements.txt
 
 ```txt
-fastapi==0.121.1
-uvicorn[standard]==0.38.0
-pydantic==2.12.4
-pydantic-settings==2.11.0
-httpx==0.28.1
-icalendar==5.0.12
-````
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+httpx>=0.27.0
+icalendar>=5.0.12
+python-dateutil>=2.9.0.post0
+tzdata>=2024.1
+```
 
 ---
 
-# 3) Push Milestone 2 to GitHub
-
-```powershell
-# from repo root
-.\.venv\Scripts\Activate.ps1
-
-# ensure runtime deps exist for teammates
-pip install -r requirements.txt
-
-# stage files (do NOT commit .env)
-git add README.md requirements.txt src docs .github
-git reset .env 2>$null
-
-git commit -
-```
