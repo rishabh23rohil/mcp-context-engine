@@ -1,5 +1,3 @@
-Got it — I’ll keep it lean and drop in a **single, ready-to-paste README.md** that matches your current repo (including your three screenshots). You can add the GitHub/AI screenshots later without changing the text.
-
 ```markdown
 # MCP Context Engine
 
@@ -19,7 +17,7 @@ A minimal **context-aware middleware** (MCP-style) that fetches real-world data 
 
 | View | Image |
 | --- | --- |
-| Swagger home | ![Swagger](./screenshots/swagger-home.png) |
+| Swagger home | ![Swagger](https://github.com/rishabh23rohil/MCP-FRESH-TEST/blob/main/screenshots/swagger-home.png?raw=true) |
 | Busy check (e.g., `am I free tomorrow at 03:10?`) | ![Calendar busy](./screenshots/calendar-busy.png) |
 | Slot suggestion (e.g., `any slot tomorrow morning for 45 min`) | ![Calendar slot](./screenshots/calendar-slot.png) |
 
@@ -245,3 +243,6 @@ tzdata>=2024.1
 ```
 
 
+
+
+![Swagger](https://github.com/rishabh23rohil/MCP-FRESH-TEST/blob/main/screenshots/swagger-home.png?raw=true)
