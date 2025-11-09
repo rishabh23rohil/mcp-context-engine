@@ -1,22 +1,21 @@
-﻿from pydantic import Field
+﻿from __future__ import annotations
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-class Settings(BaseSettings):
-    # Read APP_ENV from .env, default "local"
-    app_env: str = Field(default="local", alias="APP_ENV")
 
+class Settings(BaseSettings):
+    # use UPPERCASE env names to match .env
+    APP_ENV: str = "local"  # local | dev | prod
     NOTION_TOKEN: str | None = None
     GITHUB_TOKEN: str | None = None
     CALENDAR_ICS_URL: str | None = None
     OPENAI_API_KEY: str | None = None
 
-    # IMPORTANT: allow extras so unknown env keys don't explode; be case-insensitive
+    # pydantic-settings v2 style
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="allow",
-        case_sensitive=False,
-        populate_by_name=True,
+        extra="ignore",  # ignore stray vars rather than erroring
     )
+
 
 settings = Settings()

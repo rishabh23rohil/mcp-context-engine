@@ -4,27 +4,35 @@ from fastapi import APIRouter
 from ..schemas.query import QueryRequest, QueryResponse, ContextItem
 from ..core.intent import classify_intent
 from ..core.summarize import summarize
-from ..providers.calendar import CalendarProvider
+from ..core.config import settings
 from ..providers.notion import NotionProvider
 from ..providers.github import GitHubProvider
+from ..providers.calendar import CalendarProvider
+from ..providers.calendar_ics import CalendarICSProvider  # <-- NEW
+from ..core.logging import get_logger
+log = get_logger(__name__)
+
+calendar_provider = CalendarICSProvider() if settings.CALENDAR_ICS_URL else CalendarProvider()
+log.info(f"calendar.provider.selected provider={type(calendar_provider).__name__}")
+
+
 
 router = APIRouter(tags=["query"])
 
-# Provider registry (stubbed)
+# Provider registry (ICS if configured, else stub calendar)
+calendar_provider = CalendarICSProvider() if settings.CALENDAR_ICS_URL else CalendarProvider()
+
 PROVIDERS = {
-    "calendar": CalendarProvider(),
+    "calendar": calendar_provider,
     "notion": NotionProvider(),
     "github": GitHubProvider(),
 }
 
 def _select_sources(requested: List[str], intent: str) -> List[str]:
     if "all" in requested:
-        # bias to intent first
         order = [intent] + [s for s in ["calendar", "notion", "github"] if s != intent]
         return order
-    # keep order, but ensure only known providers
     return [s for s in requested if s in PROVIDERS]
-
 
 @router.post("/query", response_model=QueryResponse)
 async def handle_query(payload: QueryRequest) -> QueryResponse:
