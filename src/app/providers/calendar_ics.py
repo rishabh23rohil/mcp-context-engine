@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date as _date
 from typing import Any, List, Dict
 
 import httpx
@@ -22,6 +22,7 @@ def _to_dt(value: Any) -> datetime | None:
         return None
 
     # VEVENT fields are often wrapped objects exposing .dt
+    raw = value
     if hasattr(value, "dt"):
         value = value.dt
 
@@ -30,8 +31,6 @@ def _to_dt(value: Any) -> datetime | None:
     else:
         # date -> datetime at 00:00
         try:
-            from datetime import date as _date
-
             if isinstance(value, _date):
                 dt = datetime(value.year, value.month, value.day)
             else:
@@ -45,6 +44,23 @@ def _to_dt(value: Any) -> datetime | None:
 
     # convert to local tz
     return dt.astimezone(LOCAL_TZ)
+
+
+def _is_all_day(dt_prop: Any) -> bool:
+    """
+    Heuristic:
+    - VALUE=DATE or .dt is a date (not datetime) => all-day.
+    """
+    try:
+        # icalendar.vDDDTypes keeps params
+        if hasattr(dt_prop, "params") and dt_prop.params.get("VALUE", "").upper() == "DATE":
+            return True
+        if hasattr(dt_prop, "dt"):
+            val = dt_prop.dt
+            return isinstance(val, _date) and not isinstance(val, datetime)
+    except Exception:
+        pass
+    return False
 
 
 class CalendarICSProvider:
@@ -74,11 +90,20 @@ class CalendarICSProvider:
         items: List[Dict[str, Any]] = []
         for comp in cal.walk("VEVENT"):
             summary = comp.get("SUMMARY")
-            start = _to_dt(comp.get("DTSTART"))
-            end = _to_dt(comp.get("DTEND"))
+            dtstart_prop = comp.get("DTSTART")
+            dtend_prop = comp.get("DTEND")
 
+            start = _to_dt(dtstart_prop)
+            end = _to_dt(dtend_prop) if dtend_prop else None
             if not summary or not start:
                 continue
+
+            # All-day detection
+            all_day = _is_all_day(dtstart_prop)
+
+            # If all-day and no explicit DTEND, treat as one full day
+            if all_day and not end:
+                end = (start + timedelta(days=1)).replace(microsecond=0)
 
             # Only upcoming-ish events
             if end and end < now:
@@ -86,12 +111,9 @@ class CalendarICSProvider:
             if start > horizon:
                 continue
 
-            # Optional dumb text filter with the user query
+            # Optional light filter on summary (no-op for now)
             if query and query.strip():
-                q = query.lower()
-                if q not in str(summary).lower():
-                    # you can enrich here (location/description) if needed
-                    pass
+                _ = query  # placeholder for future scoring
 
             snippet = (
                 f"{start.strftime('%Y-%m-%d %H:%M')} - "
@@ -107,6 +129,8 @@ class CalendarICSProvider:
                     "metadata": {
                         "start": start.replace(microsecond=0).isoformat(),
                         "end": (end or start).replace(microsecond=0).isoformat(),
+                        "all_day": bool(all_day),
+                        "title": str(summary),
                     },
                 }
             )
