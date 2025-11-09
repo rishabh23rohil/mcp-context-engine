@@ -17,9 +17,9 @@ A minimal **context-aware middleware** (MCP-style) that fetches real-world data 
 
 | View | Image |
 | --- | --- |
-| Swagger home | ![Swagger](https://github.com/rishabh23rohil/MCP-FRESH-TEST/blob/main/screenshots/swagger-home.png?raw=true) |
-| Busy check (e.g., `am I free tomorrow at 03:10?`) | ![Calendar busy](./screenshots/calendar-busy.png) |
-| Slot suggestion (e.g., `any slot tomorrow morning for 45 min`) | ![Calendar slot](./screenshots/calendar-slot.png) |
+| Swagger home | ![Swagger](https://github.com/rishabh23rohil/mcp-context-engine/blob/main/screenshots/swagger-home.png?raw=true) |
+| Busy check (e.g., `am I free tomorrow at 03:10?`) | ![Calendar busy](https://github.com/rishabh23rohil/mcp-context-engine/blob/main/screenshots/calendar-busy.png?raw=true) |
+| Slot suggestion (e.g., `any slot tomorrow morning for 45 min`) | ![Calendar slot](https://github.com/rishabh23rohil/mcp-context-engine/blob/main/screenshots/calendar-slot.png?raw=true)) |
 
 
 
@@ -245,4 +245,4 @@ tzdata>=2024.1
 
 
 
-![Swagger](https://github.com/rishabh23rohil/MCP-FRESH-TEST/blob/main/screenshots/swagger-home.png?raw=true)
+
